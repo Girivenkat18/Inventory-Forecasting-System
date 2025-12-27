@@ -1,0 +1,61 @@
+productId,name,category,region,unitPrice,currentStock,reorderThreshold
+10025,Bose QuietComfort 35 Headphones,Accessories,Asia,104,18,60
+10025,Bose QuietComfort 35 Headphones,Electronics,Europe,1186,12,78
+10025,Bose QuietComfort 35 Headphones,Accessories,North America,1362,26,68
+10007,MacBook Pro 16-inch,Wearables,Asia,1069,215,52
+10007,MacBook Pro 16-inch,Wearables,Europe,635,292,63
+10007,MacBook Pro 16-inch,Networking,North America,176,183,40
+10094,The Alchemist by Paulo Coelho,Accessories,Asia,1772,10,88
+10094,The Alchemist by Paulo Coelho,Accessories,Europe,1740,19,82
+10094,The Alchemist by Paulo Coelho,Accessories,North America,1907,30,80
+10110,Cuisinart Griddler Deluxe,Accessories,Asia,1264,141,49
+10110,Cuisinart Griddler Deluxe,Accessories,Europe,719,273,40
+10110,Cuisinart Griddler Deluxe,Networking,North America,1679,149,70
+10105,H&M Slim Fit Jeans,Networking,Asia,510,13,71
+10105,H&M Slim Fit Jeans,Wearables,Europe,896,23,74
+10105,H&M Slim Fit Jeans,Wearables,North America,1038,21,80
+10173,Paula's Choice Skin Perfecting 2% BHA Liquid Exfoliant,Accessories,Asia,1941,219,49
+10173,Paula's Choice Skin Perfecting 2% BHA Liquid Exfoliant,Wearables,Europe,1877,192,48
+10173,Paula's Choice Skin Perfecting 2% BHA Liquid Exfoliant,Wearables,North America,1438,258,43
+10234,Hydro Flask Standard Mouth Water Bottle,Networking,Asia,1215,22,76
+10234,Hydro Flask Standard Mouth Water Bottle,Wearables,Europe,210,16,72
+10234,Hydro Flask Standard Mouth Water Bottle,Wearables,North America,319,22,72
+10087,Uniqlo Ultra Light Down Jacket,Wearables,Asia,1863,248,63
+10087,Uniqlo Ultra Light Down Jacket,Wearables,Europe,993,257,60
+10087,Uniqlo Ultra Light Down Jacket,Wearables,North America,132,196,66
+10010,Dune by Frank Herbert,Electronics,Asia,355,24,88
+10010,Dune by Frank Herbert,Accessories,Europe,636,17,80
+10010,Dune by Frank Herbert,Wearables,North America,599,22,80
+10144,YETI Tundra 45 Cooler,Electronics,Asia,552,137,49
+10144,YETI Tundra 45 Cooler,Networking,Europe,524,168,54
+10144,YETI Tundra 45 Cooler,Accessories,North America,941,145,68
+10046,Becoming by Michelle Obama,Wearables,Asia,1770,14,84
+10046,Becoming by Michelle Obama,Electronics,Europe,1519,19,62
+10046,Becoming by Michelle Obama,Wearables,North America,1632,23,81
+10207,Lululemon Wunder Under High-Rise Leggings,Accessories,Asia,1313,196,64
+10207,Lululemon Wunder Under High-Rise Leggings,Electronics,Europe,164,253,62
+10207,Lululemon Wunder Under High-Rise Leggings,Networking,North America,1076,164,63
+10115,Amazon Echo Show 10,Accessories,Asia,1858,25,78
+10115,Amazon Echo Show 10,Accessories,Europe,386,11,89
+10115,Amazon Echo Show 10,Wearables,North America,1760,18,88
+10169,Samsung Odyssey G7 Gaming Monitor,Accessories,Asia,248,130,52
+10169,Samsung Odyssey G7 Gaming Monitor,Networking,Europe,914,181,40
+10169,Samsung Odyssey G7 Gaming Monitor,Networking,North America,765,266,43
+10114,Fitbit Versa 3,Wearables,Asia,489,30,62
+10114,Fitbit Versa 3,Networking,Europe,168,19,60
+10114,Fitbit Versa 3,Wearables,North America,474,21,71
+10231,Adidas Originals Trefoil Hoodie,Accessories,Asia,284,170,57
+10231,Adidas Originals Trefoil Hoodie,Electronics,Europe,502,262,52
+10231,Adidas Originals Trefoil Hoodie,Wearables,North America,1563,207,67
+10186,Polar Vantage V2,Accessories,Asia,621,23,65
+10186,Polar Vantage V2,Electronics,Europe,911,18,83
+10186,Polar Vantage V2,Accessories,North America,877,25,88
+10016,"Salt, Fat, Acid, Heat by Samin Nosrat",Networking,Asia,523,282,57
+10016,"Salt, Fat, Acid, Heat by Samin Nosrat",Electronics,Europe,122,208,43
+10016,"Salt, Fat, Acid, Heat by Samin Nosrat",Wearables,North America,493,276,65
+10153,Nike Sportswear Club Fleece Hoodie,Electronics,Asia,1383,28,71
+10153,Nike Sportswear Club Fleece Hoodie,Electronics,Europe,331,30,73
+10153,Nike Sportswear Club Fleece Hoodie,Networking,North America,665,30,82
+10126,Yeti Roadie 24 Cooler,Electronics,Asia,377,207,63
+10126,Yeti Roadie 24 Cooler,Accessories,Europe,1845,233,70
+10126,Yeti Roadie 24 Cooler,Wearables,North America,727,144,51
