@@ -1,6 +1,7 @@
 import React from 'react';
 import { Line, Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend } from 'chart.js';
+import { format } from 'date-fns';
 
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend);
@@ -11,12 +12,28 @@ const SalesOverviewModal = ({ isOpen, onClose, data }) => {
     const { totalRevenue, totalQuantity, salesTrends, salesByRegion, recentSales } = data;
 
     // Chart Data Preparation
+    // Aggregate Daily Revenue by Quarter
+    const quarterlyRevenue = {};
+    if (salesTrends) {
+        salesTrends.forEach(d => {
+            try {
+                const q = format(new Date(d._id), "yyyy 'Q'Q");
+                quarterlyRevenue[q] = (quarterlyRevenue[q] || 0) + d.revenue;
+            } catch (e) {
+                console.warn("Invalid date in salesTrends:", d._id);
+            }
+        });
+    }
+
+    const sortedQuarters = Object.keys(quarterlyRevenue).sort();
+    const revenueValues = sortedQuarters.map(q => quarterlyRevenue[q]);
+
     const lineChartData = {
-        labels: salesTrends.map(d => d._id),
+        labels: sortedQuarters,
         datasets: [
             {
-                label: 'Daily Revenue',
-                data: salesTrends.map(d => d.revenue),
+                label: 'Quarterly Revenue',
+                data: revenueValues,
                 borderColor: '#3b82f6',
                 backgroundColor: 'rgba(59, 130, 246, 0.5)',
                 tension: 0.4

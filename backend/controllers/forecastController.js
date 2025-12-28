@@ -117,9 +117,11 @@ const generateForecast = async (req, res) => {
                     return {
                         productId: pred.productId,
                         productName: prod.name,
+                        currentStock: prod.currentStock || 0,
                         predictedDemand: pred.predictedDemand,
-                        confidenceScore: pred.confidenceScore || 0.85, // Use AI confidence or fallback
-                        reorderRescomended: prod.currentStock < pred.predictedDemand
+                        confidenceScore: pred.confidenceScore || 0.85,
+                        reorderRescomended: prod.currentStock < pred.predictedDemand,
+                        reorderThreshold: prod.reorderThreshold || 10
                     };
                 }).filter(p => p !== null);
 
@@ -137,25 +139,69 @@ const generateForecast = async (req, res) => {
         }
 
         // --- NEW AGGREGATIONS FOR VISUALIZATION ---
-        // 1. Forecast Distribution by Region (Pie Chart)
-        const regionMap = {};
+        // 1. Forecast Distribution by Region (Pie Chart) - for demand forecast
+        const regionDemandMap = {};
         predictions.forEach(p => {
             const prod = products.find(prod => prod.productId === p.productId);
             if (prod && prod.region) {
-                regionMap[prod.region] = (regionMap[prod.region] || 0) + p.predictedDemand;
+                regionDemandMap[prod.region] = (regionDemandMap[prod.region] || 0) + p.predictedDemand;
             }
         });
-        const forecastDistribution = Object.keys(regionMap).map(region => ({
-            name: region,
-            value: regionMap[region]
+        const regionalForecast = Object.keys(regionDemandMap).map(region => ({
+            region: region,
+            predictedDemand: regionDemandMap[region]
         }));
 
+        // 2. Regional Revenue aggregation from historical sales
+        const regionalRevenueAgg = await SalesData.aggregate([
+            { $match: matchStage },
+            {
+                $group: {
+                    _id: "$region",
+                    totalRevenue: { $sum: "$revenue" }
+                }
+            },
+            { $sort: { totalRevenue: -1 } }
+        ]);
+        const regionalRevenue = regionalRevenueAgg.map(r => ({
+            region: r._id,
+            revenue: r.totalRevenue
+        }));
+
+        // Calculate total predicted revenue (using avg unit price per region)
+        const avgPriceByRegion = await SalesData.aggregate([
+            { $match: matchStage },
+            {
+                $group: {
+                    _id: "$region",
+                    avgPrice: { $avg: "$unitPrice" }
+                }
+            }
+        ]);
+        const priceMap = {};
+        avgPriceByRegion.forEach(r => {
+            priceMap[r._id] = r.avgPrice || 0;
+        });
+
+        // Calculate predicted revenue per region
+        const regionalPredictedRevenue = regionalForecast.map(rf => {
+            const avgPrice = priceMap[rf.region] || 0;
+            return {
+                region: rf.region,
+                predictedRevenue: Math.round(rf.predictedDemand * avgPrice)
+            };
+        });
+
+        const totalPredictedRevenue = regionalPredictedRevenue.reduce((sum, r) => sum + r.predictedRevenue, 0);
 
         res.json({
             predictions,
-            analysis: aiAnalysis,
+            aiAnalysis,
             salesTrend,
-            forecastDistribution
+            regionalForecast,
+            regionalRevenue,
+            regionalPredictedRevenue,
+            totalPredictedRevenue
         });
         console.log("Forecast response sent.");
 
@@ -171,9 +217,11 @@ const calculateMovingAverage = (products, historyByProduct, days) => {
         if (hist.length === 0) return {
             productId: p.productId,
             productName: p.name,
+            currentStock: p.currentStock || 0,
             predictedDemand: 0,
             confidenceScore: 0.5,
-            reorderRescomended: false
+            reorderRescomended: false,
+            reorderThreshold: p.reorderThreshold || 10
         };
 
         const totalQty = hist.reduce((acc, curr) => acc + curr.qty, 0);
@@ -191,9 +239,11 @@ const calculateMovingAverage = (products, historyByProduct, days) => {
         return {
             productId: p.productId,
             productName: p.name,
+            currentStock: p.currentStock || 0,
             predictedDemand,
             confidenceScore: parseFloat(confidenceScore.toFixed(2)),
-            reorderRescomended: p.currentStock < predictedDemand
+            reorderRescomended: p.currentStock < predictedDemand,
+            reorderThreshold: p.reorderThreshold || 10
         };
     });
 };
