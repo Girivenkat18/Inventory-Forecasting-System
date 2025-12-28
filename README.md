@@ -409,7 +409,3 @@ When AI is unavailable (rate limits, no API key):
 MIT License
 
 ---
-
-<div align="center">
-  <strong>Built with ❤️ for smarter inventory management</strong>
-</div>
