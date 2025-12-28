@@ -54,6 +54,39 @@ const getOverview = async (req, res) => {
     }
 };
 
+const downloadSalesData = async (req, res) => {
+    try {
+        const { Parser } = require('json2csv');
+        const salesData = await SalesData.find().sort({ date: -1 }).lean();
+
+        if (!salesData || salesData.length === 0) {
+            return res.status(404).json({ msg: 'No sales data found' });
+        }
+
+        const fields = [
+            { label: 'Date', value: 'date' },
+            { label: 'Product ID', value: 'productId' },
+            { label: 'Product Name', value: 'productName' },
+            { label: 'Category', value: 'category' },
+            { label: 'Region', value: 'region' },
+            { label: 'Quantity', value: 'quantity' },
+            { label: 'Unit Price', value: 'unitPrice' },
+            { label: 'Revenue', value: 'revenue' }
+        ];
+
+        const json2csvParser = new Parser({ fields });
+        const csv = json2csvParser.parse(salesData);
+
+        res.header('Content-Type', 'text/csv');
+        res.attachment('sales_data.csv');
+        return res.send(csv);
+
+    } catch (err) {
+        console.error("CSV Download Error:", err);
+        res.status(500).json({ msg: 'Server error generating CSV' });
+    }
+};
+
 const getProducts = async (req, res) => {
     try {
         const products = await Product.find();
@@ -65,5 +98,6 @@ const getProducts = async (req, res) => {
 
 module.exports = {
     getOverview,
-    getProducts
+    getProducts,
+    downloadSalesData
 };

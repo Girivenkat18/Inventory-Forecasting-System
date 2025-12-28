@@ -123,10 +123,13 @@
 }
 
 .alert-badge {
+  display: inline-block;
+  vertical-align: middle;
   background: rgba(239, 68, 68, 0.2);
   color: var(--accent-danger);
   padding: 0.25rem 0.5rem;
   border-radius: 4px;
   font-size: 0.75rem;
+  font-weight: 600;
   border: 1px solid rgba(239, 68, 68, 0.5);
 }

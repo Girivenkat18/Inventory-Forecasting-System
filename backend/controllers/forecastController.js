@@ -8,7 +8,9 @@ const openai = new OpenAI({
 });
 
 const generateForecast = async (req, res) => {
+    console.log("-> generateForecast called");
     const { days, region, productId } = req.body;
+    console.log(`Params: days=${days}, region=${region}, productId=${productId}`);
     const timeframeDays = parseInt(days) || 30;
 
     try {
@@ -21,8 +23,8 @@ const generateForecast = async (req, res) => {
             matchStage.productId = productId;
         }
 
+        console.log("Fetching sales history...");
         // Get aggregated daily sales (Historical Trend)
-        // Removed 90-day limit to show full history trend
         const salesHistory = await SalesData.aggregate([
             { $match: matchStage },
             {
@@ -36,9 +38,9 @@ const generateForecast = async (req, res) => {
             },
             { $sort: { "_id.date": 1 } }
         ]);
+        console.log(`Sales history fetched. Count: ${salesHistory.length}`);
 
         // Aggregate daily total sales for the trend chart
-        // This sums up all products for each day
         const salesTrendMap = {};
         salesHistory.forEach(item => {
             const date = item._id.date;
@@ -55,10 +57,11 @@ const generateForecast = async (req, res) => {
         if (productId && productId !== 'All') productQuery.productId = productId;
         if (region && region !== 'All') productQuery.region = region;
 
+        console.log("Fetching products...");
         const products = await Product.find(productQuery);
+        console.log(`Products fetched. Count: ${products.length}`);
 
         // Prepare data for AI or Fallback
-        // Group sales history by productId for easier processing
         const historyByProduct = {};
         salesHistory.forEach(item => {
             const pid = item._id.productId;
@@ -70,7 +73,10 @@ const generateForecast = async (req, res) => {
         let aiAnalysis = "";
 
         // CHECK IF OPENAI KEY EXISTS
-        if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'your_openai_api_key') {
+        const hasKey = process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'your_openai_api_key';
+        console.log(`Has OpenAI Key: ${hasKey}`);
+
+        if (hasKey) {
             const productLimit = products.slice(0, 10);
 
             let promptData = "Historical Sales Data Summary:\n";
@@ -83,14 +89,24 @@ const generateForecast = async (req, res) => {
 
             promptData += `\nTask: Predict total quantity needed for the next ${timeframeDays} days for each product. 
         Also analyze sales trends and provide a summary.
-        Output JSON: { "analysis": "string", "predictions": [ { "productId": "string", "predictedDemand": number } ] }`;
+        IMPORTANT: Estimate a 'confidenceScore' (0.0 to 1.0) for each prediction based on data consistency.
+        Output JSON: { "analysis": "string", "predictions": [ { "productId": "string", "predictedDemand": number, "confidenceScore": number } ] }`;
 
             try {
-                const completion = await openai.chat.completions.create({
+                console.log("Calling OpenAI...");
+                // Add a timeout for the OpenAI call
+                const timeoutPromise = new Promise((resolve, reject) => {
+                    setTimeout(() => reject(new Error("OpenAI request timed out")), 20000);
+                });
+
+                const apiPromise = openai.chat.completions.create({
                     messages: [{ role: "system", content: "You are an inventory forecasting expert." }, { role: "user", content: promptData }],
                     model: "gpt-3.5-turbo",
                     response_format: { type: "json_object" },
                 });
+
+                const completion = await Promise.race([apiPromise, timeoutPromise]);
+                console.log("OpenAI responded.");
 
                 const result = JSON.parse(completion.choices[0].message.content);
                 aiAnalysis = result.analysis;
@@ -102,7 +118,7 @@ const generateForecast = async (req, res) => {
                         productId: pred.productId,
                         productName: prod.name,
                         predictedDemand: pred.predictedDemand,
-                        confidenceScore: 0.9,
+                        confidenceScore: pred.confidenceScore || 0.85, // Use AI confidence or fallback
                         reorderRescomended: prod.currentStock < pred.predictedDemand
                     };
                 }).filter(p => p !== null);
@@ -115,117 +131,37 @@ const generateForecast = async (req, res) => {
 
         } else {
             // FALLBACK
+            console.log("Using Moving Average fallback.");
             predictions = calculateMovingAverage(products, historyByProduct, timeframeDays);
             aiAnalysis = "Forecast generated using Moving Average (AI Key not configured).";
         }
 
         // --- NEW AGGREGATIONS FOR VISUALIZATION ---
-
-        // --- NEW AGGREGATIONS FOR VISUALIZATION ---
-
-        // 1. Forecast Trend (Future Projection) with Random Noise
-        // We have total predicted demand for N days. We distribute this linearly but with randomness
-        // to mimic a realistic forecast curve.
-        const forecastTrend = [];
-        const today = new Date();
-        const totalPredictedDemand = predictions.reduce((sum, p) => sum + p.predictedDemand, 0);
-        const dailyAvg = totalPredictedDemand / timeframeDays;
-
-        for (let i = 1; i <= timeframeDays; i++) {
-            const futureDate = new Date(today);
-            futureDate.setDate(today.getDate() + i);
-            const dateStr = futureDate.toISOString().split('T')[0];
-
-            // Add +/- 20% random variation
-            const noise = (Math.random() - 0.5) * 0.4; // Range: -0.2 to 0.2
-            const dailyValue = Math.max(0, Math.round(dailyAvg * (1 + noise)));
-
-            forecastTrend.push({
-                date: dateStr,
-                quantity: dailyValue
-            });
-        }
-
-        // 2. Regional Forecast Distribution (Based on Historical Sales Share)
-        // Since products in DB might have a static 'region' field (or only one entry due to unique ID),
-        // relying on start 'product.region' is inaccurate for multi-region products.
-        // Better approach: Distribute meaningful predicted demand based on *historical sales distribution* by region.
-
-        // Step A: Calculate Regional Share per Product from History
-        const productRegionalShare = {}; // { productId: { 'North America': 0.6, 'Europe': 0.4 } }
-
-        // We need to re-aggregate sales history by productId AND region
-        // We can re-use salesHistory but we grouped by date earlier. 
-        // Let's do a quick in-memory aggregation of the raw sales data logic if possible, 
-        // OR essentially run a separate lightweight aggregation.
-        // Given we already touched SalesData, let's just run a focused aggregation for distribution.
-        const regionalStats = await SalesData.aggregate([
-            { $match: matchStage },
-            { $group: { _id: { productId: "$productId", region: "$region" }, totalQty: { $sum: "$quantity" } } }
-        ]);
-
-        regionalStats.forEach(stat => {
-            const pid = stat._id.productId;
-            const reg = stat._id.region;
-            const qty = stat.totalQty;
-
-            if (!productRegionalShare[pid]) productRegionalShare[pid] = { total: 0, regions: {} };
-            productRegionalShare[pid].total += qty;
-            productRegionalShare[pid].regions[reg] = qty;
-        });
-
-        // Step B: Aggregate Predicted Demand into Regions using Shares
-        const regionalMap = {};
-
+        // 1. Forecast Distribution by Region (Pie Chart)
+        const regionMap = {};
         predictions.forEach(p => {
-            const shareData = productRegionalShare[p.productId];
-            if (shareData && shareData.total > 0) {
-                // Distribute this product's predicted demand across its active regions
-                Object.keys(shareData.regions).forEach(reg => {
-                    const share = shareData.regions[reg] / shareData.total;
-                    const regionDemand = p.predictedDemand * share;
-                    regionalMap[reg] = (regionalMap[reg] || 0) + regionDemand;
-                });
-            } else {
-                // Fallback: If no history (new product?), assign to Product's default region or 'Unknown'
-                const prod = products.find(pr => pr.productId === p.productId);
-                const reg = prod ? (prod.region || 'Unknown') : 'Unknown';
-                regionalMap[reg] = (regionalMap[reg] || 0) + p.predictedDemand;
+            const prod = products.find(prod => prod.productId === p.productId);
+            if (prod && prod.region) {
+                regionMap[prod.region] = (regionMap[prod.region] || 0) + p.predictedDemand;
             }
         });
-
-        const regionalForecast = Object.keys(regionalMap).map(region => ({
-            region,
-            predictedDemand: Math.round(regionalMap[region])
+        const forecastDistribution = Object.keys(regionMap).map(region => ({
+            name: region,
+            value: regionMap[region]
         }));
 
 
-        // Save Forecast History
-        const forecastEntry = new Forecast({
-            timeframeDays,
-            region,
-            product: productId || 'All',
+        res.json({
             predictions,
-            aiAnalysis
-        });
-        // Note: We don't save the transient trend data to DB to keep schema simple, 
-        // we just return it in the response.
-        // If we needed to save it, we'd update the Forecast model.
-        await forecastEntry.save();
-
-        // Combine DB object with extra viz data
-        const responseData = {
-            ...forecastEntry.toObject(),
+            analysis: aiAnalysis,
             salesTrend,
-            forecastTrend,
-            regionalForecast
-        };
-
-        res.json(responseData);
+            forecastDistribution
+        });
+        console.log("Forecast response sent.");
 
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ msg: 'Server error generating forecast' });
+        console.error("Generate Forecast Internal Error:", err);
+        res.status(500).json({ msg: 'Server Error', error: err.message });
     }
 };
 
@@ -241,14 +177,22 @@ const calculateMovingAverage = (products, historyByProduct, days) => {
         };
 
         const totalQty = hist.reduce((acc, curr) => acc + curr.qty, 0);
-        const avgDaily = totalQty / (hist.length || 1); // rough daily average
+        const avgDaily = totalQty / (hist.length || 1);
+
+        const variance = hist.reduce((acc, curr) => acc + Math.pow(curr.qty - avgDaily, 2), 0) / hist.length;
+        const stdDev = Math.sqrt(variance);
+
+        const cv = avgDaily > 0 ? stdDev / avgDaily : 0;
+        let confidenceScore = 0.95 - (cv * 0.5);
+        confidenceScore = Math.max(0.4, Math.min(0.95, confidenceScore));
+
         const predictedDemand = Math.round(avgDaily * days);
 
         return {
             productId: p.productId,
             productName: p.name,
             predictedDemand,
-            confidenceScore: 0.8,
+            confidenceScore: parseFloat(confidenceScore.toFixed(2)),
             reorderRescomended: p.currentStock < predictedDemand
         };
     });

@@ -69,7 +69,7 @@ const ProductCatalog = () => {
                             <th>Price</th>
                             <th>Stock</th>
                             <th>Reorder Threshold</th>
-                            <th>Status</th>
+                            <th style={{ textAlign: 'center' }}>Status</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -82,10 +82,10 @@ const ProductCatalog = () => {
                                 <td>${p.unitPrice}</td>
                                 <td>{p.currentStock}</td>
                                 <td>{p.reorderThreshold}</td>
-                                <td>
+                                <td style={{ textAlign: 'center' }}>
                                     {p.currentStock <= p.reorderThreshold ?
                                         <span className="alert-badge">Low Stock</span> :
-                                        <span style={{ color: 'var(--accent-success)', fontSize: '0.875rem' }}>OK</span>
+                                        <span style={{ color: 'var(--accent-success)', fontSize: '0.875rem', fontWeight: 'bold' }}>In Stock</span>
                                     }
                                 </td>
                             </tr>

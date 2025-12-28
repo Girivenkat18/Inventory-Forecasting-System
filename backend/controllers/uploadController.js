@@ -2,6 +2,7 @@ const fs = require('fs');
 const csv = require('csv-parser');
 const Product = require('../models/Product');
 const SalesData = require('../models/SalesData');
+const Forecast = require('../models/Forecast');
 
 const uploadProducts = async (req, res) => {
     if (!req.file) return res.status(400).json({ msg: 'No file uploaded' });
@@ -15,27 +16,30 @@ const uploadProducts = async (req, res) => {
                 // Filter out empty rows (rows where productId is missing/empty)
                 const validRows = results.filter(item => item.productId && item.productId.trim() !== '');
 
-                // Map CSV columns to schema if necessary, assuming CSV headers match 
-                // productId, name, category, region, unitPrice, currentStock, reorderThreshold
+                // Deduplicate items based on productId (keep last occurrence)
+                const productMap = new Map();
+                validRows.forEach(item => {
+                    productMap.set(item.productId.trim().replace(/\.0$/, ''), {
+                        productId: item.productId.trim().replace(/\.0$/, ''),
+                        name: item.name,
+                        category: item.category,
+                        region: item.region,
+                        unitPrice: parseFloat(item.unitPrice) || 0,
+                        currentStock: parseInt(item.currentStock) || 0,
+                        reorderThreshold: parseInt(item.reorderThreshold) || 10
+                    });
+                });
 
-                // Clear existing or Upsert? Let's Upsert to avoid duplicates
-                for (let item of validRows) {
-                    await Product.findOneAndUpdate(
-                        { productId: item.productId },
-                        {
-                            name: item.name,
-                            category: item.category,
-                            region: item.region,
-                            unitPrice: parseFloat(item.unitPrice),
-                            currentStock: parseInt(item.currentStock),
-                            reorderThreshold: parseInt(item.reorderThreshold)
-                        },
-                        { upsert: true, new: true }
-                    );
-                }
+                const productsToInsert = Array.from(productMap.values());
+
+                // DESTRUCTIVE: Clear existing Products and Forecasts
+                await Product.deleteMany({});
+                await Forecast.deleteMany({});
+
+                await Product.insertMany(productsToInsert);
 
                 fs.unlinkSync(req.file.path);
-                res.json({ msg: 'Product catalog uploaded successfully', count: validRows.length });
+                res.json({ msg: 'Product catalog uploaded successfully (Previous data overwritten)', count: productsToInsert.length });
             } catch (err) {
                 console.error(err);
                 res.status(500).json({ msg: 'Server error processing CSV' });
@@ -57,19 +61,24 @@ const uploadSales = async (req, res) => {
 
                 // productId, date, quantity, region, revenue
                 const salesDocs = validRows.map(item => ({
-                    productId: item.productId,
+                    productId: item.productId.trim().replace(/\.0$/, ''),
+                    productName: item.productName,
                     date: new Date(item.date),
                     quantity: parseInt(item.quantity),
                     region: item.region,
-                    revenue: parseFloat(item.revenue)
+                    revenue: parseFloat(item.revenue),
+                    unitPrice: parseFloat(item.unitPrice),
+                    category: item.category
                 }));
 
-                // Ideally we might want to check for duplicates or clear old data, 
-                // but for now let's just insert.
+                // DESTRUCTIVE: Clear existing Sales and Forecasts
+                await SalesData.deleteMany({});
+                await Forecast.deleteMany({});
+
                 await SalesData.insertMany(salesDocs);
 
                 fs.unlinkSync(req.file.path);
-                res.json({ msg: 'Sales data uploaded successfully', count: validRows.length });
+                res.json({ msg: 'Sales data uploaded successfully (Previous data overwritten)', count: validRows.length });
             } catch (err) {
                 console.error("Sales Upload Error:", err);
                 res.status(500).json({ msg: 'Server error processing CSV: ' + err.message });

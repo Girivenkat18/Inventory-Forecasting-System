@@ -1,7 +1,7 @@
 import React from 'react';
 import { Line, Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend } from 'chart.js';
-import { CSVLink } from "react-csv";
+
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend);
 
@@ -68,13 +68,12 @@ const SalesOverviewModal = ({ isOpen, onClose, data }) => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <h3>Recent Sales Data</h3>
                         {recentSales && (
-                            <CSVLink
-                                data={recentSales}
-                                filename={"sales-data.csv"}
+                            <a
+                                href="http://127.0.0.1:5001/api/data/download-sales"
                                 className="btn btn-outline"
                             >
                                 Download CSV
-                            </CSVLink>
+                            </a>
                         )}
                     </div>
 
@@ -84,8 +83,11 @@ const SalesOverviewModal = ({ isOpen, onClose, data }) => {
                                 <tr>
                                     <th>Date</th>
                                     <th>Product ID</th>
+                                    <th>Product Name</th>
+                                    <th>Category</th>
                                     <th>Region</th>
                                     <th>Qty</th>
+                                    <th>Unit Price</th>
                                     <th>Revenue</th>
                                 </tr>
                             </thead>
@@ -94,8 +96,11 @@ const SalesOverviewModal = ({ isOpen, onClose, data }) => {
                                     <tr key={idx}>
                                         <td>{new Date(sale.date).toLocaleDateString()}</td>
                                         <td>{sale.productId}</td>
+                                        <td>{sale.productName}</td>
+                                        <td>{sale.category}</td>
                                         <td>{sale.region}</td>
                                         <td>{sale.quantity}</td>
+                                        <td>${sale.unitPrice}</td>
                                         <td>${sale.revenue}</td>
                                     </tr>
                                 ))}
