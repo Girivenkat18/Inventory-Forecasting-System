@@ -14,7 +14,6 @@ const getOverview = async (req, res) => {
             }
         ]);
 
-        // Aggregation by Region
         const salesByRegion = await SalesData.aggregate([
             {
                 $group: {
@@ -25,7 +24,6 @@ const getOverview = async (req, res) => {
             }
         ]);
 
-        // Sales Trends (Daily)
         const salesTrends = await SalesData.aggregate([
             {
                 $group: {
@@ -37,7 +35,6 @@ const getOverview = async (req, res) => {
             { $sort: { _id: 1 } }
         ]);
 
-        // Fetch a subset of recent sales for the table
         const recentSales = await SalesData.find().sort({ date: -1 }).limit(100);
 
         res.json({

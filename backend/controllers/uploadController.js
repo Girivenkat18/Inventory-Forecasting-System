@@ -13,10 +13,8 @@ const uploadProducts = async (req, res) => {
         .on('data', (data) => results.push(data))
         .on('end', async () => {
             try {
-                // Filter out empty rows (rows where productId is missing/empty)
                 const validRows = results.filter(item => item.productId && item.productId.trim() !== '');
 
-                // Deduplicate items based on productId (keep last occurrence)
                 const productMap = new Map();
                 validRows.forEach(item => {
                     productMap.set(item.productId.trim().replace(/\.0$/, ''), {
@@ -32,10 +30,8 @@ const uploadProducts = async (req, res) => {
 
                 const productsToInsert = Array.from(productMap.values());
 
-                // DESTRUCTIVE: Clear existing Products and Forecasts
                 await Product.deleteMany({});
                 await Forecast.deleteMany({});
-
                 await Product.insertMany(productsToInsert);
 
                 fs.unlinkSync(req.file.path);
@@ -56,10 +52,8 @@ const uploadSales = async (req, res) => {
         .on('data', (data) => results.push(data))
         .on('end', async () => {
             try {
-                // Filter out empty rows (rows where productId is missing/empty)
                 const validRows = results.filter(item => item.productId && item.productId.trim() !== '');
 
-                // productId, date, quantity, region, revenue
                 const salesDocs = validRows.map(item => ({
                     productId: item.productId.trim().replace(/\.0$/, ''),
                     productName: item.productName,
@@ -71,10 +65,8 @@ const uploadSales = async (req, res) => {
                     category: item.category
                 }));
 
-                // DESTRUCTIVE: Clear existing Sales and Forecasts
                 await SalesData.deleteMany({});
                 await Forecast.deleteMany({});
-
                 await SalesData.insertMany(salesDocs);
 
                 fs.unlinkSync(req.file.path);

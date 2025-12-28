@@ -8,13 +8,10 @@ const openai = new OpenAI({
 });
 
 const generateForecast = async (req, res) => {
-    console.log("-> generateForecast called");
     const { days, region, productId } = req.body;
-    console.log(`Params: days=${days}, region=${region}, productId=${productId}`);
     const timeframeDays = parseInt(days) || 30;
 
     try {
-        // 1. Fetch relevant Historical Data
         let matchStage = {};
         if (region && region !== 'All') {
             matchStage.region = region;
@@ -23,8 +20,6 @@ const generateForecast = async (req, res) => {
             matchStage.productId = productId;
         }
 
-        console.log("Fetching sales history...");
-        // Get aggregated daily sales (Historical Trend)
         const salesHistory = await SalesData.aggregate([
             { $match: matchStage },
             {
@@ -38,9 +33,7 @@ const generateForecast = async (req, res) => {
             },
             { $sort: { "_id.date": 1 } }
         ]);
-        console.log(`Sales history fetched. Count: ${salesHistory.length}`);
 
-        // Aggregate daily total sales for the trend chart
         const salesTrendMap = {};
         salesHistory.forEach(item => {
             const date = item._id.date;
@@ -51,17 +44,12 @@ const generateForecast = async (req, res) => {
             quantity: salesTrendMap[date]
         }));
 
-
-        // Also need product info (current stock, etc.)
         let productQuery = {};
         if (productId && productId !== 'All') productQuery.productId = productId;
         if (region && region !== 'All') productQuery.region = region;
 
-        console.log("Fetching products...");
         const products = await Product.find(productQuery);
-        console.log(`Products fetched. Count: ${products.length}`);
 
-        // Prepare data for AI or Fallback
         const historyByProduct = {};
         salesHistory.forEach(item => {
             const pid = item._id.productId;
@@ -72,9 +60,7 @@ const generateForecast = async (req, res) => {
         let predictions = [];
         let aiAnalysis = "";
 
-        // CHECK IF OPENAI KEY EXISTS
         const hasKey = process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'your_openai_api_key';
-        console.log(`Has OpenAI Key: ${hasKey}`);
 
         if (hasKey) {
             const productLimit = products.slice(0, 10);
@@ -83,7 +69,6 @@ const generateForecast = async (req, res) => {
             productLimit.forEach(p => {
                 const hist = historyByProduct[p.productId] || [];
                 const totalSold = hist.reduce((acc, curr) => acc + curr.qty, 0);
-                // Send last 5 data points as trend sample
                 promptData += `Product: ${p.name} (ID: ${p.productId}). Total Sold: ${totalSold}. Recent: [${hist.slice(-5).map(h => h.qty).join(', ')}]. Stock: ${p.currentStock}.\n`;
             });
 
@@ -93,8 +78,6 @@ const generateForecast = async (req, res) => {
         Output JSON: { "analysis": "string", "predictions": [ { "productId": "string", "predictedDemand": number, "confidenceScore": number } ] }`;
 
             try {
-                console.log("Calling OpenAI...");
-                // Add a timeout for the OpenAI call
                 const timeoutPromise = new Promise((resolve, reject) => {
                     setTimeout(() => reject(new Error("OpenAI request timed out")), 20000);
                 });
@@ -106,7 +89,6 @@ const generateForecast = async (req, res) => {
                 });
 
                 const completion = await Promise.race([apiPromise, timeoutPromise]);
-                console.log("OpenAI responded.");
 
                 const result = JSON.parse(completion.choices[0].message.content);
                 aiAnalysis = result.analysis;
@@ -126,20 +108,15 @@ const generateForecast = async (req, res) => {
                 }).filter(p => p !== null);
 
             } catch (openaiError) {
-                console.error("OpenAI Error:", openaiError.message);
                 predictions = calculateMovingAverage(products, historyByProduct, timeframeDays);
                 aiAnalysis = `Forecast generated using Moving Average (AI Unavailable: ${openaiError.message}).`;
             }
 
         } else {
-            // FALLBACK
-            console.log("Using Moving Average fallback.");
             predictions = calculateMovingAverage(products, historyByProduct, timeframeDays);
             aiAnalysis = "Forecast generated using Moving Average (AI Key not configured).";
         }
 
-        // --- NEW AGGREGATIONS FOR VISUALIZATION ---
-        // 1. Forecast Distribution by Region (Pie Chart) - for demand forecast
         const regionDemandMap = {};
         predictions.forEach(p => {
             const prod = products.find(prod => prod.productId === p.productId);
@@ -152,7 +129,6 @@ const generateForecast = async (req, res) => {
             predictedDemand: regionDemandMap[region]
         }));
 
-        // 2. Regional Revenue aggregation from historical sales
         const regionalRevenueAgg = await SalesData.aggregate([
             { $match: matchStage },
             {
@@ -168,7 +144,6 @@ const generateForecast = async (req, res) => {
             revenue: r.totalRevenue
         }));
 
-        // Calculate total predicted revenue (using avg unit price per region)
         const avgPriceByRegion = await SalesData.aggregate([
             { $match: matchStage },
             {
@@ -183,7 +158,6 @@ const generateForecast = async (req, res) => {
             priceMap[r._id] = r.avgPrice || 0;
         });
 
-        // Calculate predicted revenue per region
         const regionalPredictedRevenue = regionalForecast.map(rf => {
             const avgPrice = priceMap[rf.region] || 0;
             return {
@@ -203,10 +177,9 @@ const generateForecast = async (req, res) => {
             regionalPredictedRevenue,
             totalPredictedRevenue
         });
-        console.log("Forecast response sent.");
 
     } catch (err) {
-        console.error("Generate Forecast Internal Error:", err);
+        console.error("Generate Forecast Error:", err);
         res.status(500).json({ msg: 'Server Error', error: err.message });
     }
 };
