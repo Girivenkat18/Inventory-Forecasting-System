@@ -11,8 +11,6 @@ const SalesOverviewModal = ({ isOpen, onClose, data }) => {
 
     const { totalRevenue, totalQuantity, salesTrends, salesByRegion, recentSales } = data;
 
-    // Chart Data Preparation
-    // Aggregate Daily Revenue by Quarter
     const quarterlyRevenue = {};
     if (salesTrends) {
         salesTrends.forEach(d => {

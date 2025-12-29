@@ -17,7 +17,7 @@ import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas';
 import { format } from 'date-fns';
 
-// Register ChartJS components
+
 ChartJS.register(
     CategoryScale,
     LinearScale,
@@ -34,6 +34,7 @@ const ForecastResults = ({ results }) => {
     const barChartRef = useRef(null);
     const pieChartRef = useRef(null);
 
+
     if (!results) return null;
 
     const {
@@ -48,14 +49,12 @@ const ForecastResults = ({ results }) => {
         generatedAt
     } = results;
 
-    // --- Statistics Calculation ---
     const totalDemand = predictions.reduce((sum, p) => sum + p.predictedDemand, 0);
     const totalAlerts = predictions.filter(p => p.reorderRescomended).length;
     const avgConfidence = predictions.length > 0
         ? (predictions.reduce((sum, p) => sum + (p.confidenceScore || 0), 0) / predictions.length * 100).toFixed(1)
         : 0;
 
-    // Find top region by demand
     let topRegion = 'N/A';
     let topRegionDemand = 0;
     if (regionalForecast && regionalForecast.length > 0) {
@@ -64,19 +63,16 @@ const ForecastResults = ({ results }) => {
         topRegionDemand = sortedRegions[0].predictedDemand;
     }
 
-    // Products needing reorder
     const reorderProducts = predictions.filter(p => p.reorderRescomended);
 
-    // Format currency
     const formatCurrency = (num) => {
         if (num >= 1000000) return `$${(num / 1000000).toFixed(1)}M`;
         if (num >= 1000) return `$${(num / 1000).toFixed(1)}K`;
         return `$${num?.toFixed(2) || 0}`;
     };
 
-    // Format number with commas
     const formatNumber = (num) => {
-        return num?.toLocaleString() || '0';
+        return Math.ceil(num || 0).toLocaleString();
     };
 
     const exportPDF = async () => {
@@ -87,7 +83,6 @@ const ForecastResults = ({ results }) => {
             const margin = 15;
             const contentWidth = pageWidth - (margin * 2);
 
-            // Colors
             const primaryColor = [59, 130, 246]; // Blue
             const successColor = [16, 185, 129]; // Green
             const warningColor = [245, 158, 11]; // Orange
@@ -95,7 +90,6 @@ const ForecastResults = ({ results }) => {
             const darkText = [30, 41, 59];
             const lightText = [100, 116, 139];
 
-            // Helper function for headers
             const addSectionHeader = (text, y) => {
                 doc.setFillColor(...primaryColor);
                 doc.rect(margin, y - 6, contentWidth, 10, 'F');
@@ -106,7 +100,6 @@ const ForecastResults = ({ results }) => {
                 return y + 12;
             };
 
-            // Helper for adding explanatory text
             const addExplanation = (text, y) => {
                 doc.setTextColor(...lightText);
                 doc.setFontSize(9);
@@ -116,7 +109,6 @@ const ForecastResults = ({ results }) => {
                 return y + (lines.length * 4) + 4;
             };
 
-            // Page footer
             const addPageNumber = (pageNum) => {
                 doc.setTextColor(...lightText);
                 doc.setFontSize(8);
@@ -124,15 +116,9 @@ const ForecastResults = ({ results }) => {
                 doc.text('Inventory Forecast Report', margin, pageHeight - 10);
             };
 
-            // ============================================
-            // PAGE 1: COVER PAGE
-            // ============================================
-
-            // Background gradient effect (blue bar at top)
             doc.setFillColor(...primaryColor);
             doc.rect(0, 0, pageWidth, 80, 'F');
 
-            // Title
             doc.setTextColor(255, 255, 255);
             doc.setFontSize(28);
             doc.setFont('helvetica', 'bold');
@@ -140,12 +126,10 @@ const ForecastResults = ({ results }) => {
             doc.setFontSize(22);
             doc.text('ANALYSIS REPORT', pageWidth / 2, 48, { align: 'center' });
 
-            // Subtitle
             doc.setFontSize(12);
             doc.setFont('helvetica', 'normal');
             doc.text(`${timeframeDays}-Day Demand Forecast`, pageWidth / 2, 65, { align: 'center' });
 
-            // Report info box
             doc.setFillColor(248, 250, 252);
             doc.roundedRect(margin + 20, 100, contentWidth - 40, 60, 3, 3, 'F');
 
@@ -163,7 +147,6 @@ const ForecastResults = ({ results }) => {
             doc.setFont('helvetica', 'bold');
             doc.text(`Next ${timeframeDays} Days`, margin + 30, 153);
 
-            // Quick stats on cover
             let coverY = 180;
             doc.setFillColor(248, 250, 252);
             doc.roundedRect(margin, coverY, contentWidth, 50, 3, 3, 'F');
@@ -189,20 +172,12 @@ const ForecastResults = ({ results }) => {
 
             addPageNumber(1);
 
-            // ============================================
-            // PAGE 2: EXECUTIVE SUMMARY
-            // ============================================
             doc.addPage();
             let y = 20;
 
             y = addSectionHeader('EXECUTIVE SUMMARY', y);
 
-            y = addExplanation(
-                'This section provides a high-level overview of the forecast analysis and key performance indicators.',
-                y
-            );
 
-            // Key Metrics Grid
             doc.setTextColor(...darkText);
             doc.setFontSize(11);
             doc.setFont('helvetica', 'bold');
@@ -245,7 +220,6 @@ const ForecastResults = ({ results }) => {
 
             y = doc.lastAutoTable.finalY + 15;
 
-            // Quick Insights
             doc.setTextColor(...darkText);
             doc.setFontSize(11);
             doc.setFont('helvetica', 'bold');
@@ -270,9 +244,6 @@ const ForecastResults = ({ results }) => {
 
             addPageNumber(2);
 
-            // ============================================
-            // PAGE 3: DEMAND ANALYSIS WITH CHART
-            // ============================================
             doc.addPage();
             y = 20;
 
@@ -283,7 +254,6 @@ const ForecastResults = ({ results }) => {
                 y
             );
 
-            // Capture bar chart
             if (barChartRef.current) {
                 try {
                     const canvas = await html2canvas(barChartRef.current, {
@@ -293,8 +263,8 @@ const ForecastResults = ({ results }) => {
                     const imgData = canvas.toDataURL('image/png');
                     const imgWidth = contentWidth;
                     const imgHeight = (canvas.height * imgWidth) / canvas.width;
-                    doc.addImage(imgData, 'PNG', margin, y, imgWidth, Math.min(imgHeight, 100));
-                    y += Math.min(imgHeight, 100) + 10;
+                    doc.addImage(imgData, 'PNG', margin, y, imgWidth, Math.min(imgHeight, 150));
+                    y += Math.min(imgHeight, 150) + 10;
                 } catch (err) {
                     console.warn('Could not capture bar chart:', err);
                     doc.setTextColor(...lightText);
@@ -303,7 +273,6 @@ const ForecastResults = ({ results }) => {
                 }
             }
 
-            // Top products table
             doc.setTextColor(...darkText);
             doc.setFontSize(11);
             doc.setFont('helvetica', 'bold');
@@ -355,9 +324,6 @@ const ForecastResults = ({ results }) => {
 
             addPageNumber(3);
 
-            // ============================================
-            // PAGE 4: REGIONAL ANALYSIS
-            // ============================================
             if (regionalForecast && regionalForecast.length > 0) {
                 doc.addPage();
                 y = 20;
@@ -369,7 +335,6 @@ const ForecastResults = ({ results }) => {
                     y
                 );
 
-                // Capture pie chart
                 if (pieChartRef.current) {
                     try {
                         const canvas = await html2canvas(pieChartRef.current, {
@@ -386,7 +351,6 @@ const ForecastResults = ({ results }) => {
                     }
                 }
 
-                // Regional breakdown table
                 doc.setTextColor(...darkText);
                 doc.setFontSize(11);
                 doc.setFont('helvetica', 'bold');
@@ -423,27 +387,13 @@ const ForecastResults = ({ results }) => {
 
                 y = doc.lastAutoTable.finalY + 10;
 
-                // Regional insights
-                y = addExplanation(
-                    `Regional Analysis Summary: The ${topRegion} region shows the highest demand with ${formatNumber(topRegionDemand)} units predicted. Consider adjusting inventory distribution to match regional demand patterns.`,
-                    y
-                );
-
                 addPageNumber(4);
             }
 
-            // ============================================
-            // PAGE 5: DETAILED PREDICTIONS TABLE
-            // ============================================
             doc.addPage();
             y = 20;
 
             y = addSectionHeader('DETAILED PREDICTIONS', y);
-
-            y = addExplanation(
-                'Complete list of all products with their current stock levels, predicted demand, and reorder recommendations. Products marked for reorder should be prioritized.',
-                y
-            );
 
             const detailedData = predictions.map(p => [
                 p.productId,
@@ -492,17 +442,13 @@ const ForecastResults = ({ results }) => {
 
             addPageNumber(doc.internal.getNumberOfPages());
 
-            // ============================================
-            // PAGE 6: REORDER RECOMMENDATIONS
-            // ============================================
             if (reorderProducts.length > 0) {
                 doc.addPage();
                 y = 20;
 
                 y = addSectionHeader('REORDER RECOMMENDATIONS', y);
 
-                // Alert box
-                doc.setFillColor(254, 242, 242); // Light red
+                doc.setFillColor(254, 242, 242);
                 doc.setDrawColor(...dangerColor);
                 doc.setLineWidth(0.5);
                 doc.roundedRect(margin, y, contentWidth, 15, 2, 2, 'FD');
@@ -513,12 +459,6 @@ const ForecastResults = ({ results }) => {
                 doc.text(`[!] ${reorderProducts.length} Product(s) Require Immediate Attention`, margin + 5, y + 10);
                 y += 25;
 
-                y = addExplanation(
-                    'The following products have been flagged for reorder based on their current stock levels relative to predicted demand. Action should be taken promptly to avoid stockouts.',
-                    y
-                );
-
-                // Reorder table with urgency
                 const reorderData = reorderProducts.map(p => {
                     const stockGap = p.predictedDemand - (p.currentStock || 0);
                     const urgency = stockGap > 100 ? 'Critical' : stockGap > 50 ? 'High' : 'Medium';
@@ -564,9 +504,6 @@ const ForecastResults = ({ results }) => {
                     }
                 });
 
-                y = doc.lastAutoTable.finalY + 15;
-
-                // Action recommendations
                 doc.setTextColor(...darkText);
                 doc.setFontSize(11);
                 doc.setFont('helvetica', 'bold');
@@ -591,9 +528,6 @@ const ForecastResults = ({ results }) => {
                 addPageNumber(doc.internal.getNumberOfPages());
             }
 
-            // ============================================
-            // FINAL PAGE: REPORT FOOTER
-            // ============================================
             doc.addPage();
             y = 80;
 
@@ -633,7 +567,6 @@ const ForecastResults = ({ results }) => {
         }
     };
 
-    // 1. Prediction Bar Chart Data
     const sortedPreds = [...predictions].sort((a, b) => b.predictedDemand - a.predictedDemand).slice(0, 10);
     const barChartData = {
         labels: sortedPreds.map(p => p.productName),
@@ -645,7 +578,6 @@ const ForecastResults = ({ results }) => {
         }]
     };
 
-    // 2. Regional Demand Pie Chart Data
     const pieChartData = {
         labels: regionalForecast ? regionalForecast.map(r => r.region) : [],
         datasets: [
@@ -669,11 +601,10 @@ const ForecastResults = ({ results }) => {
                 </button>
             </div>
 
-            {/* Summary Statistics Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
                 <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1.5rem', borderRadius: '12px', textAlign: 'center' }}>
                     <h4 style={{ margin: '0 0 0.5rem 0', color: '#aaa', fontSize: '0.9rem' }}>Total Predicted Demand</h4>
-                    <span style={{ fontSize: '2rem', fontWeight: 'bold', color: '#60a5fa' }}>{totalDemand}</span>
+                    <span style={{ fontSize: '2rem', fontWeight: 'bold', color: '#60a5fa' }}>{formatNumber(totalDemand)}</span>
                 </div>
                 <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1.5rem', borderRadius: '12px', textAlign: 'center' }}>
                     <h4 style={{ margin: '0 0 0.5rem 0', color: '#aaa', fontSize: '0.9rem' }}>Reorder Alerts</h4>
@@ -689,20 +620,45 @@ const ForecastResults = ({ results }) => {
                 </div>
             </div>
 
-            {/* Charts Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
 
-                {/* 1. Demand Forecast per Product */}
                 <div
                     ref={barChartRef}
                     className="chart-container"
-                    style={{ height: '350px', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '8px' }}
+                    style={{ height: '500px', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '8px' }}
                 >
                     <h3 style={{ fontSize: '1rem', marginBottom: '1rem', color: '#ccc' }}>Predicted Demand by Product</h3>
-                    <Bar data={barChartData} options={{ responsive: true, maintainAspectRatio: false }} />
+                    <Bar
+                        data={barChartData}
+                        options={{
+                            indexAxis: 'y',
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                x: {
+                                    grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                                    ticks: { color: '#ccc' }
+                                },
+                                y: {
+                                    grid: { display: false },
+                                    ticks: {
+                                        color: '#ccc',
+                                        autoSkip: false
+                                    }
+                                }
+                            },
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    backgroundColor: 'rgba(0,0,0,0.8)',
+                                    titleColor: '#fff',
+                                    bodyColor: '#fff'
+                                }
+                            }
+                        }}
+                    />
                 </div>
 
-                {/* 2. Regional Distribution (Centered) */}
                 {regionalForecast && regionalForecast.length > 0 && (
                     <div
                         ref={pieChartRef}
@@ -735,6 +691,7 @@ const ForecastResults = ({ results }) => {
                         <th>Predicted Demand</th>
                         <th>Reorder Threshold</th>
                         <th>Reorder?</th>
+
                     </tr>
                 </thead>
                 <tbody>
@@ -743,7 +700,7 @@ const ForecastResults = ({ results }) => {
                             <td>{p.productId}</td>
                             <td>{p.productName}</td>
                             <td>{p.currentStock || 0}</td>
-                            <td>{p.predictedDemand}</td>
+                            <td>{formatNumber(p.predictedDemand)}</td>
                             <td>{p.reorderThreshold || 10}</td>
                             <td>
                                 {p.reorderRescomended ? (
@@ -752,10 +709,12 @@ const ForecastResults = ({ results }) => {
                                     <span style={{ color: '#10b981', fontWeight: '500' }}>OK</span>
                                 )}
                             </td>
+
                         </tr>
                     ))}
                 </tbody>
             </table>
+
 
         </div>
     );

@@ -17,15 +17,25 @@ const uploadProducts = async (req, res) => {
 
                 const productMap = new Map();
                 validRows.forEach(item => {
-                    productMap.set(item.productId.trim().replace(/\.0$/, ''), {
-                        productId: item.productId.trim().replace(/\.0$/, ''),
-                        name: item.name,
-                        category: item.category,
-                        region: item.region,
-                        unitPrice: parseFloat(item.unitPrice) || 0,
-                        currentStock: parseInt(item.currentStock) || 0,
-                        reorderThreshold: parseInt(item.reorderThreshold) || 10
-                    });
+                    const productId = item.productId.trim().replace(/\.0$/, '');
+                    const currentStock = parseInt(item.currentStock) || 0;
+
+                    if (productMap.has(productId)) {
+                        const existing = productMap.get(productId);
+                        existing.currentStock += currentStock;
+                        // Optionally update other fields if they might be more "current" in later rows
+                        // For now, we'll keep the first occurrence's metadata
+                    } else {
+                        productMap.set(productId, {
+                            productId,
+                            name: item.name,
+                            category: item.category,
+                            region: item.region,
+                            unitPrice: parseFloat(item.unitPrice) || 0,
+                            currentStock: currentStock,
+                            reorderThreshold: parseInt(item.reorderThreshold) || 10
+                        });
+                    }
                 });
 
                 const productsToInsert = Array.from(productMap.values());

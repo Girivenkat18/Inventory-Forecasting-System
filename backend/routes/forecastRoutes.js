@@ -4,4 +4,5 @@ const forecastController = require('../controllers/forecastController');
 
 router.post('/generate', forecastController.generateForecast);
 
+
 module.exports = router;

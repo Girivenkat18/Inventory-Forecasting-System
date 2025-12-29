@@ -19,7 +19,7 @@ const ForecastControls = ({ onGenerate, loading }) => {
         <div className="glass-panel" style={{ padding: '2.5rem 2.5rem', marginTop: '2rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '2rem' }}>
 
-                {/* Left side - Title and timeframe buttons */}
+
                 <div style={{ display: 'flex', alignItems: 'center', gap: '2rem', flexWrap: 'wrap' }}>
                     <div>
                         <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: '600' }}>Forecast Timeframe</h2>
@@ -28,7 +28,7 @@ const ForecastControls = ({ onGenerate, loading }) => {
                         </p>
                     </div>
 
-                    {/* Quick select buttons */}
+
                     <div style={{ display: 'flex', gap: '0.75rem' }}>
                         {timeframeOptions.map(opt => (
                             <button
@@ -55,7 +55,7 @@ const ForecastControls = ({ onGenerate, loading }) => {
                     </div>
                 </div>
 
-                {/* Generate button */}
+
                 <button
                     className="btn btn-primary"
                     onClick={handleGenerate}

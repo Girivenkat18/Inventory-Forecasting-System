@@ -7,3 +7,4 @@ export const fetchProducts = () => API.get('/data/products');
 export const uploadProducts = (formData) => API.post('/upload/products', formData);
 export const uploadSales = (formData) => API.post('/upload/sales', formData);
 export const generateForecast = (data) => API.post('/forecast/generate', data);
+
